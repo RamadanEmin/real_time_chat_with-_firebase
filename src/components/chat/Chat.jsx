@@ -1,11 +1,35 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import EmojiPicker from 'emoji-picker-react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import { useChatStore } from '../../lib/chatStore';
+import { useUserStore } from '../../lib/userStore';
 
 import './chat.css';
 
 const Chat = () => {
+    const [chat, setChat] = useState();
     const [open, setOpen] = useState(false);
     const [text, setText] = useState('');
+
+    const { currentUser } = useUserStore();
+    const { chatId, isCurrentUserBlocked, isReceiverBlocked } = useChatStore();
+
+    const endRef = useRef(null);
+
+    useEffect(() => {
+        endRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [chat.messages]);
+
+    useEffect(() => {
+        const unSub = onSnapshot(doc(db, 'chats', chatId), (res) => {
+            setChat(res.data());
+        });
+
+        return () => {
+            unSub();
+        };
+    }, [chatId]);
 
     const handleEmoji = (e) => {
         setText((prev) => prev + e.emoji);
@@ -29,54 +53,20 @@ const Chat = () => {
                 </div>
             </div>
             <div className="center">
-                <div className="message">
-                    <img src="./avatar.png" alt="" />
-                    <div className="texts">
-                        <p>
-                            Lorem, ipsum dolor sit amet consectetur adipisicing elit. Reiciendis necessitatibus,
-                            magnam unde assumenda officia maxime nisi quas illum doloremque consectetur?
-                        </p>
-                        <span>1 min ago</span>
+                {chat?.messages?.map((message) => (
+                    <div
+                        className={
+                            message.senderId === currentUser?.id ? 'message own' : 'message'
+                        }
+                        key={message?.createAt}
+                    >
+                        <div className="texts">
+                            {message.img && <img src={message.img} alt="" />}
+                            <p>{message.text}</p>
+                        </div>
                     </div>
-                </div>
-                <div className="message own">
-                    <div className="texts">
-                        <p>
-                            Lorem, ipsum dolor sit amet consectetur adipisicing elit. Reiciendis necessitatibus,
-                            magnam unde assumenda officia maxime nisi quas illum doloremque consectetur?
-                        </p>
-                        <span>1 min ago</span>
-                    </div>
-                </div>
-                <div className="message">
-                    <img src="./avatar.png" alt="" />
-                    <div className="texts">
-                        <p>
-                            Lorem, ipsum dolor sit amet consectetur adipisicing elit. Reiciendis necessitatibus,
-                            magnam unde assumenda officia maxime nisi quas illum doloremque consectetur?
-                        </p>
-                        <span>1 min ago</span>
-                    </div>
-                </div>
-                <div className="message">
-                    <img src="./avatar.png" alt="" />
-                    <div className="texts">
-                        <p>
-                            Lorem, ipsum dolor sit amet consectetur adipisicing elit. Reiciendis necessitatibus,
-                            magnam unde assumenda officia maxime nisi quas illum doloremque consectetur?
-                        </p>
-                        <span>1 min ago</span>
-                    </div>
-                </div>
-                <div className="message own">
-                    <div className="texts">
-                        <p>
-                            Lorem, ipsum dolor sit amet consectetur adipisicing elit. Reiciendis necessitatibus,
-                            magnam unde assumenda officia maxime nisi quas illum doloremque consectetur?
-                        </p>
-                        <span>1 min ago</span>
-                    </div>
-                </div>
+                ))}
+                <div ref={endRef}></div>
             </div>
             <div className="bottom">
                 <div className="icons">
@@ -95,7 +85,10 @@ const Chat = () => {
                         <EmojiPicker open={open} onEmojiClick={handleEmoji} />
                     </div>
                 </div>
-                <button className="sendButton">
+                <button
+                    className="sendButton"
+                    disabled={isCurrentUserBlocked || isReceiverBlocked}
+                >
                     Send
                 </button>
             </div>
