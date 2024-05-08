@@ -1,12 +1,12 @@
 import { auth, db } from '../../lib/firebase';
 import { useChatStore } from '../../lib/chatStore';
 import { useUserStore } from '../../lib/userStore';
-
-import './detail.css';
 import { arrayRemove, arrayUnion, doc, updateDoc } from 'firebase/firestore';
 
+import './detail.css';
+
 const Detail = () => {
-    const { user, isReceiverBlocked, changeBlock } = useChatStore();
+    const { chatId, user, isCurrentUserBlocked, isReceiverBlocked, changeBlock, resetChat } = useChatStore();
     const { currentUser } = useUserStore();
 
     const handleBlock = async () => {
@@ -107,7 +107,11 @@ const Detail = () => {
                     </div>
                 </div>
                 <button onClick={handleBlock}>
-                    Block User
+                    {isCurrentUserBlocked
+                        ? 'You are Blocked!'
+                        : isReceiverBlocked
+                            ? 'User blocked'
+                            : 'Block User'}
                 </button>
                 <button className="logout" onClick={() => auth.signOut()}>
                     Logout
