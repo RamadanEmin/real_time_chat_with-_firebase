@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import EmojiPicker from 'emoji-picker-react';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { arrayUnion, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useChatStore } from '../../lib/chatStore';
 import { useUserStore } from '../../lib/userStore';
@@ -13,7 +13,7 @@ const Chat = () => {
     const [text, setText] = useState('');
 
     const { currentUser } = useUserStore();
-    const { chatId, isCurrentUserBlocked, isReceiverBlocked } = useChatStore();
+    const { chatId, user, isCurrentUserBlocked, isReceiverBlocked } = useChatStore();
 
     const endRef = useRef(null);
 
@@ -34,6 +34,50 @@ const Chat = () => {
     const handleEmoji = (e) => {
         setText((prev) => prev + e.emoji);
         setOpen(false);
+    };
+
+    const handleSend = async () => {
+        if (text === '') {
+            return;
+        }
+
+        try {
+            await updateDoc(doc(db, 'chats', chatId), {
+                messages: arrayUnion({
+                    senderId: currentUser.id,
+                    text,
+                    createdAt: new Date()
+                })
+            });
+
+            const userIDs = [currentUser.id, user.id];
+
+            userIDs.forEach(async (id) => {
+                const userChatsRef = doc(db, 'userchats', id);
+                const userChatsSnapshot = await getDoc(userChatsRef);
+
+                if (userChatsSnapshot.exists()) {
+                    const userChatsData = userChatsSnapshot.data();
+
+                    const chatIndex = userChatsData.chats.findIndex(
+                        (c) => c.chatId === chatId
+                    );
+
+                    userChatsData.chats[chatIndex].lastMessage = text;
+                    userChatsData.chats[chatIndex].isSeen =
+                        id === currentUser.id ? true : false;
+                    userChatsData.chats[chatIndex].updatedAt = Date.now();
+
+                    await updateDoc(userChatsRef, {
+                        chats: userChatsData.chats,
+                    });
+                }
+            });
+        } catch (err) {
+            console.log(err);
+        } finally {
+            setText('');
+        }
     };
 
     return (
@@ -87,6 +131,7 @@ const Chat = () => {
                 </div>
                 <button
                     className="sendButton"
+                    onClick={handleSend}
                     disabled={isCurrentUserBlocked || isReceiverBlocked}
                 >
                     Send
