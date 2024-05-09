@@ -10,7 +10,7 @@ import { format } from 'timeago.js';
 import './chat.css';
 
 const Chat = () => {
-    const [chat, setChat] = useState();
+    const [chat, setChat] = useState({ messages: [] });
     const [open, setOpen] = useState(false);
     const [text, setText] = useState('');
     const [img, setImg] = useState({
@@ -193,6 +193,5 @@ const Chat = () => {
         </div>
     );
 };
-
 
 export default Chat;
